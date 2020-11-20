@@ -75,6 +75,7 @@ int siptlw(int c) {
     U32TO8_LE((p), (uint32_t)((v)));                                           \
     U32TO8_LE((p) + 4, (uint32_t)((v) >> 32));
 
+// 将8个字节的字符串布局的变换成小端的
 #ifdef UNALIGNED_LE_CPU
 #define U8TO64_LE(p) (*((uint64_t*)(p)))
 #else
@@ -118,10 +119,13 @@ uint64_t siphash(const uint8_t *in, const size_t inlen, const uint8_t *k) {
     uint64_t hash;
     uint8_t *out = (uint8_t*) &hash;
 #endif
+	// 初始化
     uint64_t v0 = 0x736f6d6570736575ULL;
     uint64_t v1 = 0x646f72616e646f6dULL;
     uint64_t v2 = 0x6c7967656e657261ULL;
     uint64_t v3 = 0x7465646279746573ULL;
+
+	// 将128位的key,用小端的方式分成k0和k1
     uint64_t k0 = U8TO64_LE(k);
     uint64_t k1 = U8TO64_LE(k + 8);
     uint64_t m;
