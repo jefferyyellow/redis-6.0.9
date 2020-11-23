@@ -129,14 +129,16 @@ uint64_t siphash(const uint8_t *in, const size_t inlen, const uint8_t *k) {
     uint64_t k0 = U8TO64_LE(k);
     uint64_t k1 = U8TO64_LE(k + 8);
     uint64_t m;
+	// 找到uint64_t剩余部分
     const uint8_t *end = in + inlen - (inlen % sizeof(uint64_t));
+	// 找到长度除以8的余数
     const int left = inlen & 7;
     uint64_t b = ((uint64_t)inlen) << 56;
     v3 ^= k1;
     v2 ^= k0;
     v1 ^= k1;
     v0 ^= k0;
-
+	// 处理前面可以整除的64位的数字
     for (; in != end; in += 8) {
         m = U8TO64_LE(in);
         v3 ^= m;
