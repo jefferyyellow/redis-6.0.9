@@ -617,6 +617,9 @@ int ld2string(char *buf, size_t len, long double value, ld2string_mode mode) {
  * stream. However if /dev/urandom is not available, a weaker seed is used.
  *
  * This function is not thread safe, since the state is global. */
+// 得到一些随机字节，试图从/dev/urandom中得到一个初始的种子
+// 并且在计数模式下使用一种哈希函数去产生一个随机流。一旦/dev/urandom不存在，则使用弱化的种子
+// 该函数不是线程安全的，因为状态是全局的
 void getRandomBytes(unsigned char *p, size_t len) {
     /* Global state. */
     static int seed_initialized = 0;
@@ -629,9 +632,11 @@ void getRandomBytes(unsigned char *p, size_t len) {
          * function we just need non-colliding strings, there are no
          * cryptographic security needs. */
         FILE *fp = fopen("/dev/urandom","r");
+		// /dev/urandom不存在或者读取不了数据
         if (fp == NULL || fread(seed,sizeof(seed),1,fp) != 1) {
             /* Revert to a weaker seed, and in this case reseed again
              * at every call.*/
+			// 使用弱化的种子，每次调用就重新计算一下种子
             for (unsigned int j = 0; j < sizeof(seed); j++) {
                 struct timeval tv;
                 gettimeofday(&tv,NULL);
@@ -685,6 +690,9 @@ void getRandomBytes(unsigned char *p, size_t len) {
  * given execution of Redis, so that if you are talking with an instance
  * having run_id == A, and you reconnect and it has run_id == B, you can be
  * sure that it is either a different instance or it was restarted. */
+// 生成Redis“运行ID”，这是SHA1大小的随机数，用于标识给定的Redis执行，
+// 因此，如果您正在与具有run_id == A的实例进行对话，然后重新连接并且该实例具有run_id == B，
+// 则可以 确保它是另一个实例或已重新启动。
 void getRandomHexChars(char *p, size_t len) {
     char *charset = "0123456789abcdef";
     size_t j;

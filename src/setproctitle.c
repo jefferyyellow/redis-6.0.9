@@ -80,6 +80,7 @@ static inline size_t spt_min(size_t a, size_t b) {
  * For discussion on the portability of the various methods, see
  * http://lists.freebsd.org/pipermail/freebsd-stable/2008-June/043136.html
  */
+// 清空环境变量
 static int spt_clearenv(void) {
 #if __GLIBC__
 	clearenv();
@@ -99,7 +100,7 @@ static int spt_clearenv(void) {
 #endif
 } /* spt_clearenv() */
 
-
+// 拷贝环境变量
 static int spt_copyenv(char *oldenv[]) {
 	extern char **environ;
 	char *eq;
@@ -108,6 +109,7 @@ static int spt_copyenv(char *oldenv[]) {
 	if (environ != oldenv)
 		return 0;
 
+	// 清空原来的
 	if ((error = spt_clearenv()))
 		goto error;
 
@@ -115,6 +117,7 @@ static int spt_copyenv(char *oldenv[]) {
 		if (!(eq = strchr(oldenv[i], '=')))
 			continue;
 
+		// 一个个重新设置
 		*eq = '\0';
 		error = (0 != setenv(oldenv[i], eq + 1, 1))? errno : 0;
 		*eq = '=';
@@ -130,7 +133,7 @@ error:
 	return error;
 } /* spt_copyenv() */
 
-
+// 拷贝参数，从1开始
 static int spt_copyargs(int argc, char *argv[]) {
 	char *tmp;
 	int i;
@@ -154,12 +157,14 @@ void spt_init(int argc, char *argv[]) {
 	char *base, *end, *nul, *tmp;
 	int i, error;
 
+	// 如果argv[0]为空，直接返回
 	if (!(base = argv[0]))
 		return;
 
 	nul = &base[strlen(base)];
 	end = nul + 1;
 
+	// 函数参数的最大end
 	for (i = 0; i < argc || (i >= argc && argv[i]); i++) {
 		if (!argv[i] || argv[i] < end)
 			continue;
@@ -167,25 +172,27 @@ void spt_init(int argc, char *argv[]) {
 		end = argv[i] + strlen(argv[i]) + 1;
 	}
 
+	// 取环境变量的最大end
 	for (i = 0; envp[i]; i++) {
 		if (envp[i] < end)
 			continue;
 
 		end = envp[i] + strlen(envp[i]) + 1;
 	}
-
+	
+	// 
 	if (!(SPT.arg0 = strdup(argv[0])))
 		goto syerr;
 
 #if __GLIBC__
 	if (!(tmp = strdup(program_invocation_name)))
 		goto syerr;
-
+	// 程序名称
 	program_invocation_name = tmp;
 
 	if (!(tmp = strdup(program_invocation_short_name)))
 		goto syerr;
-
+	// 程序简称
 	program_invocation_short_name = tmp;
 #elif __APPLE__
 	if (!(tmp = strdup(getprogname())))
@@ -194,10 +201,11 @@ void spt_init(int argc, char *argv[]) {
 	setprogname(tmp);
 #endif
 
-
+	// 拷贝环境变量
 	if ((error = spt_copyenv(envp)))
 		goto error;
 
+	// 拷贝参数
 	if ((error = spt_copyargs(argc, argv)))
 		goto error;
 
@@ -217,6 +225,7 @@ error:
 #define SPT_MAXTITLE 255
 #endif
 
+// 设置进程的名称
 void setproctitle(const char *fmt, ...) {
 	char buf[SPT_MAXTITLE + 1]; /* use buffer in case argv[0] is passed */
 	va_list ap;
@@ -243,7 +252,7 @@ void setproctitle(const char *fmt, ...) {
 	} else {
 		memset(SPT.base, 0, spt_min(sizeof buf, SPT.end - SPT.base));
 	}
-
+	// 设置参数0的值
 	len = spt_min(len, spt_min(sizeof buf, SPT.end - SPT.base) - 1);
 	memcpy(SPT.base, buf, len);
 	nul = &SPT.base[len];

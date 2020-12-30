@@ -262,6 +262,7 @@ int yesnotoi(char *s) {
     else return -1;
 }
 
+// 增加服务器保存参数
 void appendServerSaveParams(time_t seconds, int changes) {
     server.saveparams = zrealloc(server.saveparams,sizeof(struct saveparam)*(server.saveparamslen+1));
     server.saveparams[server.saveparamslen].seconds = seconds;
@@ -269,6 +270,7 @@ void appendServerSaveParams(time_t seconds, int changes) {
     server.saveparamslen++;
 }
 
+// 重置服务器的存盘参数
 void resetServerSaveParams(void) {
     zfree(server.saveparams);
     server.saveparams = NULL;

@@ -1753,6 +1753,9 @@ void databasesCron(void) {
  * info or not using the 'update_daylight_info' argument. Normally we update
  * such info only when calling this function from serverCron() but not when
  * calling it from call(). */
+// 我们采用全局状态下的unix时间的缓存值，随着虚拟内存和老化，每次对象访问时都必
+// 须将当前时间存储在对象中，并且不需要精确性。访问一个全局变量比调用time(NULL)快得多
+// 更新缓存的时间
 void updateCachedTime(int update_daylight_info) {
     server.ustime = ustime();
     server.mstime = server.ustime / 1000;
@@ -1763,6 +1766,7 @@ void updateCachedTime(int update_daylight_info) {
      * context is safe since we will never fork() while here, in the main
      * thread. The logging function will call a thread safe version of
      * localtime that has no locks. */
+	// 更新夏令时标记
     if (update_daylight_info) {
         struct tm tm;
         time_t ut = server.unixtime;
@@ -2335,25 +2339,36 @@ void createSharedObjects(void) {
     shared.maxstring = sdsnew("maxstring");
 }
 
+// 初始化服务器配置
 void initServerConfig(void) {
     int j;
-
+	// 更新缓存的时间
     updateCachedTime(1);
+	// 得到随机的运行ID
     getRandomHexChars(server.runid,CONFIG_RUN_ID_SIZE);
     server.runid[CONFIG_RUN_ID_SIZE] = '\0';
+	// 设置复制ID
     changeReplicationId();
+	// 清除复制ID2
     clearReplicationId2();
+	// 设置频率
     server.hz = CONFIG_DEFAULT_HZ; /* Initialize it ASAP, even if it may get
                                       updated later after loading the config.
                                       This value may be used before the server
                                       is initialized. */
+	// 设置时区
     server.timezone = getTimeZone(); /* Initialized by tzset(). */
     server.configfile = NULL;
     server.executable = NULL;
+	// 根据long的长度，确定是64位还是32位
     server.arch_bits = (sizeof(long) == 8) ? 64 : 32;
+	// 绑定的地址数目
     server.bindaddr_count = 0;
+	// UNIX套接字权限
     server.unixsocketperm = CONFIG_DEFAULT_UNIX_SOCKET_PERM;
+	// ipfd[]使用的数目
     server.ipfd_count = 0;
+	// tlsfd[]使用的数目
     server.tlsfd_count = 0;
     server.sofd = -1;
     server.active_expire_enabled = 1;
@@ -2387,13 +2402,15 @@ void initServerConfig(void) {
     server.loading_process_events_interval_bytes = (1024*1024*2);
 
     server.lruclock = getLRUClock();
+	// 重置服务器的存盘参数
     resetServerSaveParams();
-
+	// 增加服务器保存参数
     appendServerSaveParams(60*60,1);  /* save after 1 hour and 1 change */
     appendServerSaveParams(300,100);  /* save after 5 minutes and 100 changes */
     appendServerSaveParams(60,10000); /* save after 1 minute and 10000 changes */
 
     /* Replication related */
+	// 复制相关的
     server.masterauth = NULL;
     server.masterhost = NULL;
     server.masterport = 6379;
@@ -2420,6 +2437,7 @@ void initServerConfig(void) {
         server.client_obuf_limits[j] = clientBufferLimitsDefaults[j];
 
     /* Linux OOM Score config */
+	// OOM就是Out of memory，
     for (j = 0; j < CONFIG_OOM_COUNT; j++)
         server.oom_score_adj_values[j] = configOOMScoreAdjValuesDefaults[j];
 
@@ -2432,6 +2450,7 @@ void initServerConfig(void) {
     /* Command table -- we initialize it here as it is part of the
      * initial configuration, since command names may be changed via
      * redis.conf using the rename-command directive. */
+	// 命令表=作为初始化配置的一部分我们在这初始化它，因为命令名字可以通过redis.conf使用重命名指令修改
     server.commands = dictCreate(&commandTableDictType,NULL);
     server.orig_commands = dictCreate(&commandTableDictType,NULL);
     populateCommandTable();
@@ -3044,6 +3063,8 @@ void InitServerLast() {
 /* Parse the flags string description 'strflags' and set them to the
  * command 'c'. If the flags are all valid C_OK is returned, otherwise
  * C_ERR is returned (yet the recognized flags are set in the command). */
+// 分析flags字符串描述“strflags”并且将它们设置到命令c.
+// 如果flags都是合法的则返回C_OK，否则返回C_ERR
 int populateCommandTableParseFlags(struct redisCommand *c, char *strflags) {
     int argc;
     sds *argv;
@@ -3106,6 +3127,7 @@ int populateCommandTableParseFlags(struct redisCommand *c, char *strflags) {
 
 /* Populates the Redis Command Table starting from the hard coded list
  * we have on top of server.c file. */
+// 用server.c文件上部中的硬编码列表填充Redis命令列表
 void populateCommandTable(void) {
     int j;
     int numcommands = sizeof(redisCommandTable)/sizeof(struct redisCommand);
@@ -3116,6 +3138,7 @@ void populateCommandTable(void) {
 
         /* Translate the command string flags description into an actual
          * set of flags. */
+		// 命令标记字符串描述翻译成标志集合
         if (populateCommandTableParseFlags(c,c->sflags) == C_ERR)
             serverPanic("Unsupported command flag");
 
@@ -4991,6 +5014,7 @@ void memtest(size_t megabytes, int passes);
 
 /* Returns 1 if there is --sentinel among the arguments or if
  * argv[0] contains "redis-sentinel". */
+// 如果在参数中有“--sentinel”或者如果argv[0]包含"redis-sentinel"，则返回1
 int checkForSentinelMode(int argc, char **argv) {
     int j;
 
@@ -5046,6 +5070,7 @@ void redisOutOfMemoryHandler(size_t allocation_size) {
         allocation_size);
 }
 
+// 设置进程的名称
 void redisSetProcTitle(char *title) {
 #ifdef USE_SETPROCTITLE
     char *server_mode = "";
@@ -5165,19 +5190,28 @@ int main(int argc, char **argv) {
 
     /* We need to initialize our libraries, and the server configuration. */
 #ifdef INIT_SETPROCTITLE_REPLACEMENT
+	// 进程标题替换的初始化
     spt_init(argc, argv);
 #endif
     setlocale(LC_COLLATE,"");
+	// 设置时区，tzset()函数使用环境变量TZ的当前设置把值赋给三个全局变量:daylight,timezone和tzname。
     tzset(); /* Populates 'timezone' global. */
+	// 设置内存耗尽的处理函数
     zmalloc_set_oom_handler(redisOutOfMemoryHandler);
+	// 设置随机种子
     srand(time(NULL)^getpid());
     gettimeofday(&tv,NULL);
+	// 初始化crc64的查找表
     crc64_init();
 
     uint8_t hashseed[16];
+	// 得到随机字节
     getRandomBytes(hashseed,sizeof(hashseed));
+	// 设置随机种子(sip 函数算法)
     dictSetHashFunctionSeed(hashseed);
+	// 是否是哨兵模式
     server.sentinel_mode = checkForSentinelMode(argc,argv);
+	// 初始化服务器配置
     initServerConfig();
     ACLInit(); /* The ACL subsystem must be initialized ASAP because the
                   basic networking code and client creation depends on it. */

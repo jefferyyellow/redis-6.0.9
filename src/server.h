@@ -1056,17 +1056,23 @@ struct redisServer {
     /* General */
     pid_t pid;                  /* Main process pid. */
     pthread_t main_thread_id;         /* Main thread id */
+	// 配置文件的绝对路径
     char *configfile;           /* Absolute config file path, or NULL */
+	// 可执行文件的绝对路径
     char *executable;           /* Absolute executable file path. */
+	// 执行参数的向量（拷贝）
     char **exec_argv;           /* Executable argv vector (copy). */
     int dynamic_hz;             /* Change hz value depending on # of clients. */
     int config_hz;              /* Configured HZ value. May be different than
                                    the actual 'hz' field value if dynamic-hz
                                    is enabled. */
+	// serverCron()每秒的调用次数
     int hz;                     /* serverCron() calls frequency in hertz */
     int in_fork_child;          /* indication that this is a fork child */
     redisDb *db;
+	// 命令表
     dict *commands;             /* Command table */
+	// 重命名之前的命令表
     dict *orig_commands;        /* Command table before command renaming. */
     aeEventLoop *el;
     _Atomic unsigned int lruclock; /* Clock for LRU eviction */
@@ -1074,6 +1080,7 @@ struct redisServer {
     int activerehashing;        /* Incremental rehash in serverCron() */
     int active_defrag_running;  /* Active defragmentation running (holds current scan aggressiveness) */
     char *pidfile;              /* PID file path */
+	// 构架的位数，32还是64位取决于sizeof(long)
     int arch_bits;              /* 32 or 64 depending on sizeof(long) */
     int cronloops;              /* Number of times the cron function run */
     char runid[CONFIG_RUN_ID_SIZE+1];  /* ID always different at every exec. */
@@ -1093,15 +1100,24 @@ struct redisServer {
     int port;                   /* TCP listening port */
     int tls_port;               /* TLS listening port */
     int tcp_backlog;            /* TCP listen() backlog */
+	// 绑定的地址
     char *bindaddr[CONFIG_BINDADDR_MAX]; /* Addresses we should bind to */
+	// server.bindaddr[]中的地址数目
     int bindaddr_count;         /* Number of addresses in server.bindaddr[] */
     char *unixsocket;           /* UNIX socket path */
+	// UNIX套接字权限
     mode_t unixsocketperm;      /* UNIX socket permission */
+	// TCP socket的文件描述符
     int ipfd[CONFIG_BINDADDR_MAX]; /* TCP socket file descriptors */
+	// ipfd[]使用的项数目
     int ipfd_count;             /* Used slots in ipfd[] */
+	// TLS socket套接字文件描述符
     int tlsfd[CONFIG_BINDADDR_MAX]; /* TLS socket file descriptors */
+	// tlsfd[]使用的数目
     int tlsfd_count;            /* Used slots in tlsfd[] */
+	// unix套接字文件描述符
     int sofd;                   /* Unix socket file descriptor */
+	// 集群总线侦听套接字
     int cfd[CONFIG_BINDADDR_MAX];/* Cluster bus listening socket */
     int cfd_count;              /* Used slots in cfd[] */
     list *clients;              /* List of active clients */
@@ -1498,18 +1514,26 @@ typedef struct {
 typedef void redisCommandProc(client *c);
 typedef int redisGetKeysProc(struct redisCommand *cmd, robj **argv, int argc, getKeysResult *result);
 struct redisCommand {
+	// 命令名称
     char *name;
+	// 命令处理函数
     redisCommandProc *proc;
+	// 命令参数数目
     int arity;
+	// 命令标志
     char *sflags;   /* Flags as string representation, one char per flag. */
+	// 命令的二进制标志，服务器启动时解析sflags字段生成
     uint64_t flags; /* The actual flags, obtained from the 'sflags' field. */
     /* Use a function to determine keys arguments in a command line.
      * Used for Redis Cluster redirect. */
+	// 
     redisGetKeysProc *getkeys_proc;
     /* What keys should be loaded in background when calling this command? */
     int firstkey; /* The first argument that's a key (0 = no keys) */
     int lastkey;  /* The last argument that's a key */
     int keystep;  /* The step between first and last key */
+	// microseconds：从服务器启动至今命令总的执行时间
+	// calls：从服务器启动至今的调用次数
     long long microseconds, calls;
     int id;     /* Command ID. This is a progressive ID starting from 0 that
                    is assigned at runtime, and is used in order to check

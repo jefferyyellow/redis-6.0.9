@@ -33,18 +33,25 @@
 #include <stdint.h>
 
 typedef struct intset {
-    uint32_t encoding;
-    uint32_t length;
-    int8_t contents[];
+    uint32_t encoding;		// 编码
+    uint32_t length;		// 长度
+    int8_t contents[];		// 内容
 } intset;
-
+// 创建一个新的空intset
 intset *intsetNew(void);
+// 在intset中插入一个整型
 intset *intsetAdd(intset *is, int64_t value, uint8_t *success);
+// 从intset删除一个整数
 intset *intsetRemove(intset *is, int64_t value, int *success);
+// 查找value是否在set中
 uint8_t intsetFind(intset *is, int64_t value);
+// 从intset中随机返回一个值
 int64_t intsetRandom(intset *is);
+// 得到intset中指定位置的值
 uint8_t intsetGet(intset *is, uint32_t pos, int64_t *value);
+// 返回intset项的数量
 uint32_t intsetLen(const intset *is);
+// 返回intset的字节数
 size_t intsetBlobLen(intset *is);
 
 #ifdef REDIS_TEST
